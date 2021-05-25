@@ -307,7 +307,7 @@ wSwordDirection::
 wSwordAnimationState::
   ds 1 ; C137
 
-; Unlabeled
+; Frames before moving to the next sword animation state?
 wC138::
   ds 1 ; C138
 
@@ -2286,7 +2286,7 @@ wMazeSignpostPos::
 wD474::
   ds 1 ; D474
 
-; Unlabeled
+; If non-zero, Link will be animated to rotate on itself
 wD475::
   ds 1 ; D475
 
