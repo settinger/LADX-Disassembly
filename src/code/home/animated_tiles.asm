@@ -448,6 +448,14 @@ DrawLinkSpriteAndReturn::
 
     ld   hl, wLinkOAMBuffer+8                     ; $1D4C: $21 $08 $C0
 
+IF CAMERA_ENABLED
+    ldh  a, [hCameraY]
+    ld   d, a
+    ldh  a, [hCameraX]
+    ld   e, a
+    push de
+ENDC
+
     ;
     ; Write position of first Link sprite to wLinkOAMBuffer
     ;
@@ -462,6 +470,9 @@ DrawLinkSpriteAndReturn::
 
     ; wLinkOAMBuffer[8 + 0] = a
     push af                                       ; $1D5A: $F5
+IF CAMERA_ENABLED
+    sub  d ; substract camera Y
+ENDC
     ldi  [hl], a                                  ; $1D5B: $22
 
     ld   a, [wC13C]                               ; $1D5C: $FA $3C $C1
@@ -469,6 +480,9 @@ DrawLinkSpriteAndReturn::
     ldh  a, [hLinkPositionX]                      ; $1D60: $F0 $98
     add  a, c                                     ; $1D62: $81
     ; wLinkOAMBuffer[8 + 1] = a
+IF CAMERA_ENABLED
+    sub  e ; substract camera X
+ENDC
     ldi  [hl], a                                  ; $1D63: $22
 IF __PATCH_0__
     xor  a
@@ -523,12 +537,18 @@ label_1DA1::
 
     inc  hl                                       ; $1DA1: $23
     pop  af                                       ; $1DA2: $F1
-
+IF CAMERA_ENABLED
+    pop  de ; camera Y/X
+    sub  d ; substract camera Y
+ENDC
     ldi  [hl], a                                  ; $1DA3: $22
 
     ldh  a, [hLinkPositionX]                      ; $1DA4: $F0 $98
     add  a, c                                     ; $1DA6: $81
     add  a, $08                                   ; $1DA7: $C6 $08
+IF CAMERA_ENABLED
+    sub  e ; substract camera X
+ENDC
     ldi  [hl], a                                  ; $1DA9: $22
 
     ld   a, $02                                   ; $1DAA: $3E $02

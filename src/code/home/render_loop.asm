@@ -44,6 +44,10 @@ ENDC
     ld   hl, wScreenShakeVertical                 ; $01F2: $21 $56 $C1
     ldh  a, [hBaseScrollY]                        ; $01F5: $F0 $97
     add  a, [hl]                                  ; $01F7: $86
+IF CAMERA_ENABLED
+    ld   hl, hCameraY
+    add  a, [hl]
+ENDC
 .setScrollY
     ld   [rSCY], a                                ; $01F8: $E0 $42
 
@@ -57,6 +61,10 @@ ENDC
     add  a, [hl]                                  ; $01FF: $86
     ld   hl, wScrollXOffset                       ; $0200: $21 $BF $C1
     add  a, [hl]                                  ; $0203: $86
+IF CAMERA_ENABLED
+    ld   hl, hCameraX
+    add  a, [hl]
+ENDC
     ld   [rSCX], a ; scrollX                      ; $0204: $E0 $43
 
     ;

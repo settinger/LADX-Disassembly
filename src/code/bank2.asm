@@ -225,6 +225,10 @@ LinkMotionDefault::
     and  a                                        ; $42EB: $A7
     jr   nz, .return                              ; $42EC: $20 $27
 
+IF CAMERA_ENABLED
+    call UpdateCameraForDefaultMotion
+ENDC
+
     ld   a, [wSwordAnimationState]                ; $42EE: $FA $37 $C1
     ld   [wC16A], a                               ; $42F1: $EA $6A $C1
     cp   SWORD_ANIMATION_STATE_HOLDING            ; $42F4: $FE $05
@@ -8229,3 +8233,85 @@ IF FREE_BANK0
 include "code/home/check_items_to_use.asm"
 ENDC
 
+IF CAMERA_ENABLED
+
+;
+; Camera
+;
+
+ResetCamera::
+    xor  a
+    ld   [hCameraX], a
+    ld   [hCameraY], a
+    ret
+
+UpdateCameraForDefaultMotion::
+    ld   a, [wIsIndoor]
+    and  a
+    jp   nz, .return
+
+    ;
+    ; Center camera on Link position
+    ;
+
+    ; TODO: camera should never be negative to the original viewport
+
+    ld   a, [hLinkPositionX]
+    sub  DISPLAY_WIDTH / 2
+    ld   [hCameraX], a
+
+    ld   a, [hLinkPositionY]
+    sub  DISPLAY_HEIGHT / 2
+    ld   [hCameraY], a
+
+.return
+    ret
+
+ApplyCamera::
+    ldh  a, [hCameraX]
+    ld   d, a
+    ldh  a, [hCameraY]
+    ld   e, a
+
+    ;call TranslateBGViewport
+    jp   TranslateOAMBuffer
+
+; Input:
+;   de   camera x/y
+;TranslateBGViewport::
+;    ldh  a, [hBaseScrollX]
+;    sub  d
+;    ldh  [hBaseScrollX], a
+;
+;    ldh  a, [hBaseScrollY]
+;    sub  e
+;    ldh  [hBaseScrollY], a
+;
+;    ret
+
+; Input:
+;   de   camera x/y
+TranslateOAMBuffer::
+    ld   hl, wOAMBuffer
+    ld   c, 40 ; number of OAM buffer sprites
+.loop
+    ; Y = Y - cameraY
+    ld   a, [hl]
+    sub  e
+    ld   [hl+], a
+
+    ; X = X - cameraX
+    ld   a, [hl]
+    sub  d
+    ld   [hl+], a
+
+    ; Skip attributes
+    inc  hl
+    inc  hl
+
+    dec  c
+    jp   nz, .loop
+
+    ret
+
+ENDC

@@ -67,8 +67,8 @@ hEntityTilesLoadingStageA::
 hWorldTileset::
   ds 1 ; FF94
 
-; Unused
-ds 1 ; FF95
+hCameraX::
+  ds 1 ; FF95
 
 ; offset of the main window in X direction
 hBaseScrollX::
@@ -524,8 +524,7 @@ hLinkRoomPosition::
 hLinkFinalRoomPosition::
   ds 1 ; FFFB
 
-; not used
-hFFFC:
+hCameraY::
   ds 1 ; FFFC
 
 ; Is the engine currently rendering a frame.

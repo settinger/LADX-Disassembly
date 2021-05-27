@@ -65,6 +65,13 @@
 
 FREE_BANK0 = 0
 
+; Enable the semi-free camera on the Overworld
+;
+; When this flag is enabled, the overworld rooms are grouped into
+; scrollable sections of 2x2 rooms.
+
+CAMERA_ENABLED = 0
+
 
 
 ; ------------------------------------------------------------

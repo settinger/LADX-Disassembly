@@ -1554,6 +1554,10 @@ returnFromGameplayHandler::
     call SwitchBank                               ; $101C: $CD $0C $08
     call ExecuteDialog                            ; $101F: $CD $21 $23
 
+IF CAMERA_ENABLED
+    callsb ApplyCamera
+ENDC
+
     ; If on DMG, return now to the main game loop
     ldh  a, [hIsGBC]                              ; $1022: $F0 $FE
     and  a                                        ; $1024: $A7
