@@ -2,46 +2,66 @@
 ; Dialog display
 ;
 
+; FLAGS:
+; FZ - zero flag
+; FC - carry flag
+
+; Note: All arithmetic/logic operations that use register A as destination can omit the destination
+; as it is assumed to be register A by default. The following two lines have the same effect:
+
+; OR A,B
+; OR B
+
+; 8-bit registers: A, B C, D, E, H, L
+; 16-bit registers: BC, DE, HL
+; Condition codes:
+;    Z   execute if Z is set (zero flag)
+;    NZ  execute if Z is not set
+;    C   execute if C is set (carry flag)
+;    NC  execute if C is not set
+
+
+
 ExecuteDialog::
     ; If DialogState == 0, don't do anything.
-    ld   a, [wDialogState]                        ; $2321: $FA $9F $C1
-    and  a                                        ; $2324: $A7
-    ret  z                                        ; $2325: $C8
+    ld   a, [wDialogState]                        ; $2321: $FA $9F $C1  Load value via pointer into register a
+    and  a                                        ; $2324: $A7          Bitwise A && A, which sets Z to 1 if A is 0 and sets Z to 0 otherwise
+    ret  z                                        ; $2325: $C8          Return from subroutine if Z=1, continue otherwise
 
     ; Configure the dialog background color
-    ld   e, a                                     ; $2326: $5F
-    ld   a, [wGameplayType]                       ; $2327: $FA $95 $DB
-    cp   GAMEPLAY_CREDITS                         ; $232A: $FE $01
+    ld   e, a                                     ; $2326: $5F          Store wDialogState into E
+    ld   a, [wGameplayType]                       ; $2327: $FA $95 $DB  Load gameplay type into A
+    cp   GAMEPLAY_CREDITS                         ; $232A: $FE $01      Check if we're in the end credits
     ; By default use a dark background
-    ld   a, DIALOG_BG_TILE_DARK                   ; $232C: $3E $7E
-    jr   nz, .writeBackgroundTile                 ; $232E: $20 $02
+    ld   a, DIALOG_BG_TILE_DARK                   ; $232C: $3E $7E      load tile into A
+    jr   nz, .writeBackgroundTile                 ; $232E: $20 $02      Jump to .writeBackgroundTile if Z=0
 .lightBackground
     ; but during credits use a light background
-    ld   a, DIALOG_BG_TILE_LIGHT                  ; $2330: $3E $7F
+    ld   a, DIALOG_BG_TILE_LIGHT                  ; $2330: $3E $7F      Set background tile color for credits
 .writeBackgroundTile
-    ldh  [hDialogBackgroundTile], a               ; $2332: $E0 $E8
+    ldh  [hDialogBackgroundTile], a               ; $2332: $E0 $E8      Store A into [hDialogBackgroundTile]
 
     ; If the character index is > 20 (i.e. past the first two lines),
     ; mask wDialogNextCharPosition around $10
-    ld   a, [wDialogCharacterIndexHi]             ; $2334: $FA $64 $C1
-    and  a                                        ; $2337: $A7
-    ld   a, [wDialogCharacterIndex]               ; $2338: $FA $70 $C1
-    jr   nz, .wrapPosition                        ; $233B: $20 $04
-    cp   $20                                      ; $233D: $FE $20
-    jr   c, .writePosition                        ; $233F: $38 $04
+    ld   a, [wDialogCharacterIndexHi]             ; $2334: $FA $64 $C1  Load value via pointer into register A (I think this value is which row to start printing on--adding 0x01 (or more) to this causes text to begin blitting to second row)
+    and  a                                        ; $2337: $A7          Bitwise A && A, which sets Z to 1 if A is 0 and sets Z to 0 otherwise
+    ld   a, [wDialogCharacterIndex]               ; $2338: $FA $70 $C1  Load wDialogCharacterIndex via pointer into register A -- This is the column to start text in (0-15 I think?)
+    jr   nz, .wrapPosition                        ; $233B: $20 $04      Jump to wrapposition if condition Z!=0, i.e. wDialogCharacterIndexHi = 0
+    cp   $20                                      ; $233D: $FE $20      Compare wDialogCharacterIndex to 0x20
+    jr   c, .writePosition                        ; $233F: $38 $04      Jump to writeposition if carry flag is set, i.e. 0x20 > wDialogCharacterIndex AND wDialogCharacterIndexHi != 0
 .wrapPosition
-    and  $0F                                      ; $2341: $E6 $0F
-    or   $10                                      ; $2343: $F6 $10
+    and  $0F                                      ; $2341: $E6 $0F      A = A && 0b00001111
+    or   $10                                      ; $2343: $F6 $10      A = A || 0b00010000
 .writePosition
-    ld   [wDialogNextCharPosition], a             ; $2345: $EA $71 $C1
+    ld   [wDialogNextCharPosition], a             ; $2345: $EA $71 $C1  Load next character position into A
 
     ; Discard wDialogState lower byte
-    ld   a, e                                     ; $2348: $7B
-    and  $7F                                      ; $2349: $E6 $7F
+    ld   a, e                                     ; $2348: $7B          Load wDialogState into A
+    and  $7F                                      ; $2349: $E6 $7F      mask A with 0b01111111, so at this point A is either 0b10000000 or 0b00000000
 
     ; Dispatch according to the dialog state
-    dec  a                                        ; $234B: $3D
-    JP_TABLE                                      ; $234C: $C7
+    dec  a                                        ; $234B: $3D          A--
+    JP_TABLE                                      ; $234C: $C7          WELCOME TO WARP ZONE
 ._00 dw DialogOpenAnimationStartHandler           ; $234D
 ._01 dw DialogOpenAnimationHandler                ; $234F
 ._02 dw DialogOpenAnimationHandler                ; $2351
@@ -84,8 +104,8 @@ OpenDialogInTable2::
 ;   a: dialog index in table 0
 OpenDialog::
     ; Clear wDialogAskSelectionIndex
-    push af                                       ; $2385: $F5
-    xor  a                                        ; $2386: $AF
+    push af                                       ; $2385: $F5          Push register AF into stack, what is AF?
+    xor  a                                        ; $2386: $AF          A = 0
     ld   [wDialogAskSelectionIndex], a            ; $2387: $EA $77 $C1
     pop  af                                       ; $238A: $F1
 
@@ -94,22 +114,22 @@ OpenDialog::
 
     ; Initialize dialog variables
     xor  a                                        ; $238E: $AF
-    ld   [wDialogOpenCloseAnimationFrame], a                               ; $238F: $EA $6F $C1
+    ld   [wDialogOpenCloseAnimationFrame], a      ; $238F: $EA $6F $C1
     ld   [wDialogCharacterIndex], a               ; $2392: $EA $70 $C1
     ld   [wDialogCharacterIndexHi], a             ; $2395: $EA $64 $C1
-    ld   [wNameIndex], a                               ; $2398: $EA $08 $C1
+    ld   [wNameIndex], a                          ; $2398: $EA $08 $C1
     ld   [wDialogIndexHi], a                      ; $239B: $EA $12 $C1
     ld   a, $0F                                   ; $239E: $3E $0F
-    ld   [wDialogSFX], a                               ; $23A0: $EA $AB $C5
+    ld   [wDialogSFX], a                          ; $23A0: $EA $AB $C5
     ; Determine if the dialog is displayed on top or bottom
     ; wDialogState = hLinkPositionY < $48 ? $81 : $01
-    ldh  a, [hLinkPositionY]                      ; $23A3: $F0 $99
-    cp   $48                                      ; $23A5: $FE $48
-    rra                                           ; $23A7: $1F
-    and  $80                                      ; $23A8: $E6 $80
-    or   $01                                      ; $23AA: $F6 $01
+    ldh  a, [hLinkPositionY]                      ; $23A3: $F0 $99      HERE IT IS: load vertical position of Link into register A
+    cp   $48                                      ; $23A5: $FE $48      carry flag is set if hLinkPositionY < 0x48 (72, half of the 160x144 resolution)
+    rra                                           ; $23A7: $1F          Rotate register A one bit right; old C becomes new MSB, old LSB becomes new C; So if hLinkPositionY < 0x48, MSB = 1
+    and  $80                                      ; $23A8: $E6 $80      A = A & 0b10000000, sets Z to 1 if A is 0 and sets Z to 0 otherwise; A = 0b10000000 if hLinkPositionY < 0x48; A = 0b000000000 otherwise
+    or   $01                                      ; $23AA: $F6 $01      A = A | 0b00000001, sets Z to 0 -- Setting this to "OR $11" caused a crash/reboot
     ld   [wDialogState], a                        ; $23AC: $EA $9F $C1
-    ret                                           ; $23AF: $C9
+    ret                                           ; $23AF: $C9          Return from subroutine
 
 DialogOpenAnimationHandler::
     ret                                           ; $23B0: $C9
@@ -451,9 +471,9 @@ ELSE
     ld   [MBC3SelectBank], a                      ; $2573: $EA $00 $21
     pop  hl                                       ; $2576: $E1
 ENDC
-    ld   a, [wDialogCharacterIndex]               ; $2577: $FA $70 $C1
+    ld   a, [wDialogCharacterIndex]               ; $2577: $FA $70 $C1     This is the index of the character to render, e.g. if you add 1 to this value, Tarin will say "ell, [NAME]" instead of "Well, [NAME]"
     ld   e, a                                     ; $257A: $5F
-    ld   a, [wDialogCharacterIndexHi]             ; $257B: $FA $64 $C1
+    ld   a, [wDialogCharacterIndexHi]             ; $257B: $FA $64 $C1     This is some text chunk index, idk...I added 1 to it and Tarin started saying "    Key Cavern"
     ld   d, a                                     ; $257E: $57
     add  hl, de                                   ; $257F: $19
     ld   a, [hli]                                 ; $2580: $2A
@@ -491,6 +511,7 @@ ENDC
     ld   a, [wDialogState]                        ; $25AD: $FA $9F $C1
     and  $F0                                      ; $25B0: $E6 $F0
     or   $0C                                      ; $25B2: $F6 $0C
+    add  a, $01
     ld   [wDialogState], a                        ; $25B4: $EA $9F $C1
     ret                                           ; $25B7: $C9
 
@@ -622,10 +643,10 @@ ENDC
 
 .noDakuten
     ld   a, [wDialogCharacterIndex]               ; $2663: $FA $70 $C1
-    add  a, $01                                   ; $2666: $C6 $01
+    add  a, $01                                   ; $2666: $C6 $01                 Render next character in next position--adding 0x02 instead of 0x01 renders every other character with a space in between them
     ld   [wDialogCharacterIndex], a               ; $2668: $EA $70 $C1
     ld   a, [wDialogCharacterIndexHi]             ; $266B: $FA $64 $C1
-    adc  a, $00                                   ; $266E: $CE $00
+    adc  a, $00                                   ; $266E: $CE $00                 Add 00 plus carry flag to a
     ld   [wDialogCharacterIndexHi], a             ; $2670: $EA $64 $C1
     xor  a                                        ; $2673: $AF
     ; wC1CC = 01 when an unfinished textbox is waiting for a button press to continue.
@@ -754,14 +775,14 @@ label_2723::
     ld   hl, data_2717                            ; $2725: $21 $17 $27
     add  hl, de                                   ; $2728: $19
     ld   a, [wBGOriginHigh]                       ; $2729: $FA $2E $C1
-    add  a, [hl]                                  ; $272C: $86
+    add  a, [hl]                                  ; $272C: $86         Adding 1 causes all text to render on second line IDK
     ld   b, a                                     ; $272D: $47
     ld   hl, data_2715                            ; $272E: $21 $15 $27
 
 label_2731::
     add  hl, de                                   ; $2731: $19
     ld   a, [wBGOriginLow]                        ; $2732: $FA $2F $C1
-    add  a, [hl]                                  ; $2735: $86
+    add  a, [hl]                                  ; $2735: $86        Has something to do with the transition when text shifts upward
     ld   c, a                                     ; $2736: $4F
     ld   e, $10                                   ; $2737: $1E $10
 
